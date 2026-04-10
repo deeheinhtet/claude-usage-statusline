@@ -130,13 +130,18 @@ def main():
     week_start = today - timedelta(days=6)
     today_tokens = get_tokens_from_sessions(today)
     week_tokens = get_tokens_from_sessions(week_start)
-    reset_days = days_until_reset(RESET_DAY)
 
-    left = (
-        f"{format_tokens(today_tokens)} today "
-        f"\u00b7 {format_tokens(week_tokens)} this week "
-        f"\u00b7 billing resets in {reset_days}d"
-    )
+    # Only show billing reset for paid users (rate limit data present = subscription active)
+    has_subscription = bool(rate_limits.get("five_hour") or rate_limits.get("seven_day"))
+
+    token_parts = [
+        f"{format_tokens(today_tokens)} today",
+        f"{format_tokens(week_tokens)} this week",
+    ]
+    if has_subscription:
+        token_parts.append(f"billing resets in {days_until_reset(RESET_DAY)}d")
+    left = f" \u00b7 ".join(token_parts)
+
     session_bar = make_bar(session_pct)
     week_bar = make_bar(week_pct)
     session_reset_str = format_reset_time(session_resets_at)
