@@ -31,7 +31,7 @@ A Claude Code status line plugin that shows your token usage and rate limits —
 ### Option 1 — Auto install (recommended)
 
 ```bash
-git clone https://github.com/hein/claude-usage-statusline ~/.claude/plugins/claude-usage-statusline
+git clone https://github.com/deeheinhtet/claude-usage-statusline ~/.claude/plugins/claude-usage-statusline
 cd ~/.claude/plugins/claude-usage-statusline
 chmod +x install.sh
 ./install.sh
@@ -43,7 +43,7 @@ Restart Claude Code — the status line appears automatically.
 
 1. Clone the repo anywhere:
    ```bash
-   git clone https://github.com/hein/claude-usage-statusline ~/claude-usage-statusline
+   git clone https://github.com/deeheinhtet/claude-usage-statusline ~/claude-usage-statusline
    ```
 
 2. Add to `~/.claude/settings.json`:
