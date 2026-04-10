@@ -67,30 +67,31 @@ def days_until_reset(reset_day: int) -> int:
     return (reset_next_month - today).days
 
 
-def load_stats() -> dict:
-    """Load stats-cache.json. Returns empty dict on any error."""
-    try:
-        return json.loads(STATS_CACHE.read_text())
-    except Exception:
-        return {}
-
-
-def get_daily_tokens(stats: dict, target_date: str) -> int:
-    """Sum all model tokens for a given date string (YYYY-MM-DD)."""
-    for entry in stats.get("dailyModelTokens", []):
-        if entry.get("date") == target_date:
-            return sum(entry.get("tokensByModel", {}).values())
-    return 0
-
-
-def get_weekly_tokens(stats: dict) -> int:
-    """Sum tokens for the past 7 days (rolling window)."""
-    today = date.today()
-    dates = {(today - timedelta(days=i)).isoformat() for i in range(7)}
+def get_tokens_from_sessions(since_date: date) -> int:
+    """Sum input+output tokens from all JSONL session files modified on or after since_date."""
+    projects_dir = Path.home() / ".claude" / "projects"
     total = 0
-    for entry in stats.get("dailyModelTokens", []):
-        if entry.get("date") in dates:
-            total += sum(entry.get("tokensByModel", {}).values())
+    if not projects_dir.exists():
+        return 0
+    import glob as _glob
+    from datetime import datetime
+    cutoff = datetime(since_date.year, since_date.month, since_date.day).timestamp()
+    for jsonl_file in _glob.glob(str(projects_dir / "*" / "*.jsonl")):
+        try:
+            if os.path.getmtime(jsonl_file) < cutoff:
+                continue
+            with open(jsonl_file) as f:
+                for line in f:
+                    try:
+                        obj = json.loads(line)
+                        usage = obj.get("message", {}).get("usage", {})
+                        if usage:
+                            total += usage.get("input_tokens", 0)
+                            total += usage.get("output_tokens", 0)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     return total
 
 
@@ -125,20 +126,16 @@ def main():
     week_pct = rate_limits.get("seven_day", {}).get("used_percentage", 0) or 0
     week_resets_at = rate_limits.get("seven_day", {}).get("resets_at")
 
-    stats = load_stats()
-    if not stats:
-        print("Usage data unavailable")
-        return
-
-    today_str = date.today().isoformat()
-    today_tokens = get_daily_tokens(stats, today_str)
-    week_tokens = get_weekly_tokens(stats)
+    today = date.today()
+    week_start = today - timedelta(days=6)
+    today_tokens = get_tokens_from_sessions(today)
+    week_tokens = get_tokens_from_sessions(week_start)
     reset_days = days_until_reset(RESET_DAY)
 
     left = (
         f"{format_tokens(today_tokens)} today "
         f"\u00b7 {format_tokens(week_tokens)} this week "
-        f"\u00b7 resets in {reset_days}d"
+        f"\u00b7 billing resets in {reset_days}d"
     )
     session_bar = make_bar(session_pct)
     week_bar = make_bar(week_pct)
