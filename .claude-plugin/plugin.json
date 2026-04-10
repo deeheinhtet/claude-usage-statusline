@@ -1,0 +1,19 @@
+{
+  "name": "claude-usage-statusline",
+  "description": "Status line plugin for Claude Code showing daily tokens, weekly tokens, session usage bar, and weekly rate limit bar — matches the claude.ai dashboard.",
+  "version": "1.0.0",
+  "author": {
+    "name": "hein",
+    "url": "https://github.com/hein"
+  },
+  "homepage": "https://github.com/hein/claude-usage-statusline",
+  "repository": "https://github.com/hein/claude-usage-statusline",
+  "license": "MIT",
+  "keywords": [
+    "statusline",
+    "usage",
+    "tokens",
+    "rate-limit",
+    "claude-code"
+  ]
+}
