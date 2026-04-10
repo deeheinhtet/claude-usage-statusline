@@ -2,11 +2,13 @@
 """
 Claude Code usage status line script.
 Reads JSON from stdin (Claude Code session data) and ~/.claude/stats-cache.json.
-Prints: "42k tokens today · 280k tokens this week · resets in 21d  │  ███░░░░░░░ 34% ctx  │  ██████░░░░ 62% week"
+Matches claude.ai dashboard: Current session (5h limit) + Weekly limits (7d limit).
+Prints: "42k today · 280k this week · resets in 21d  │  ███████░░░ 73% session resets 2h12m  │  █████░░░░░ 56% week resets 1h12m"
 """
 import json
 import os
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -92,6 +94,21 @@ def get_weekly_tokens(stats: dict) -> int:
     return total
 
 
+def format_reset_time(resets_at_epoch) -> str:
+    """Format seconds until reset as '2h12m' or '45m' or '--'."""
+    if not resets_at_epoch:
+        return "--"
+    secs = int(resets_at_epoch) - int(time.time())
+    if secs <= 0:
+        return "now"
+    mins = secs // 60
+    hours = mins // 60
+    remaining_mins = mins % 60
+    if hours > 0:
+        return f"{hours}h{remaining_mins:02d}m"
+    return f"{mins}m"
+
+
 def main():
     # Parse stdin JSON from Claude Code
     session = {}
@@ -100,8 +117,13 @@ def main():
     except Exception:
         pass
 
-    ctx_pct = session.get("context_window", {}).get("used_percentage", 0) or 0
-    week_pct = session.get("rate_limits", {}).get("seven_day", {}).get("used_percentage", 0) or 0
+    rate_limits = session.get("rate_limits", {})
+
+    # Match dashboard: "Current session" = 5-hour limit, "Weekly limits" = 7-day limit
+    session_pct = rate_limits.get("five_hour", {}).get("used_percentage", 0) or 0
+    session_resets_at = rate_limits.get("five_hour", {}).get("resets_at")
+    week_pct = rate_limits.get("seven_day", {}).get("used_percentage", 0) or 0
+    week_resets_at = rate_limits.get("seven_day", {}).get("resets_at")
 
     stats = load_stats()
     if not stats:
@@ -118,10 +140,16 @@ def main():
         f"\u00b7 {format_tokens(week_tokens)} this week "
         f"\u00b7 resets in {reset_days}d"
     )
-    ctx_bar = make_bar(ctx_pct)
+    session_bar = make_bar(session_pct)
     week_bar = make_bar(week_pct)
+    session_reset_str = format_reset_time(session_resets_at)
+    week_reset_str = format_reset_time(week_resets_at)
 
-    print(f"{left}  \u2502  {ctx_bar} ctx  \u2502  {week_bar} week")
+    print(
+        f"{left}  \u2502  "
+        f"{session_bar} session resets {session_reset_str}  \u2502  "
+        f"{week_bar} week resets {week_reset_str}"
+    )
 
 
 if __name__ == "__main__":
