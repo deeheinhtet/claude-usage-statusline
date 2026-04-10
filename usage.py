@@ -104,9 +104,13 @@ def format_reset_time(resets_at_epoch) -> str:
         return "now"
     mins = secs // 60
     hours = mins // 60
+    days = hours // 24
+    remaining_hours = hours % 24
     remaining_mins = mins % 60
+    if days > 0:
+        return f"{days}d {remaining_hours}h"
     if hours > 0:
-        return f"{hours}h{remaining_mins:02d}m"
+        return f"{hours}h {remaining_mins}m"
     return f"{mins}m"
 
 
